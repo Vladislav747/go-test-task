@@ -41,7 +41,9 @@ func checkResource(s string) {
 	} 
 	resp, err := client.Get(s) 
 	if err != nil { 
-		fmt.Println(err) 
+		fmt.Println("Error"); 
+		fmt.Println(err)
+		fmt.Println(resp)
 	return
 	} 
 	defer resp.Body.Close() 
