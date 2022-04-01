@@ -31,6 +31,8 @@ func main() {
 	start := time.Now()
 	ch := make(chan string)
 
+	resolveResultsMap := make(map[string]string)
+
 	// resolver := newResolver();
 
 	// //Запуск метода LookUpresolver
@@ -57,11 +59,11 @@ func main() {
 	fmt.Printf("type of `c` is %T\n", chTxtlines)
 	fmt.Printf("value of `c` is %v\n", chTxtlines)
 
-	for i := 1; i <= 5; i++ {
+	for i := 1; i <= 200; i++ {
 		wg.Add(1)
 		// val, _ := <-chTxtlines
 		// fmt.Printf("value of `c` is %v\n", val)
-		go checkResource(ch, chTxtlines, &wg);
+		go checkResource(resolveResultsMap, chTxtlines, &wg);
 		// valFromCh := string(<-ch)
 		// fmt.Println(valFromCh)
 		// writeToFile("results.txt", valFromCh)
@@ -94,7 +96,7 @@ func main() {
 }
 
 //Проверка ресурса на доступность
-func checkResource(chW chan<- string, chR <-chan string, wg *sync.WaitGroup) {
+func checkResource(chW map[string]string, chR <-chan string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	/* Таймаут 5 секунд */
 	client := http.Client{
@@ -106,7 +108,7 @@ func checkResource(chW chan<- string, chR <-chan string, wg *sync.WaitGroup) {
 		if err != nil {
 			fmt.Printf("Error host - %s", url)
 			fmt.Println(err)
-			chW <- fmt.Sprint(err) // отправка в канал ch
+			chW[url] = fmt.Sprint(err) // отправка в канал ch
 			return
 		}
 		defer resp.Body.Close() // исключение утечки ресурсов
@@ -120,7 +122,7 @@ func checkResource(chW chan<- string, chR <-chan string, wg *sync.WaitGroup) {
 			// bodyString := string(bodyBytes)
 			//fmt.Println(bodyString)
 
-			chW <- fmt.Sprintf("Статус хоста %s - %d", url, resp.StatusCode)
+			chW[url] = fmt.Sprintf("Статус хоста %s - %d", url, resp.StatusCode)
 		}
 	} else {
 		fmt.Println("канал закрыт")
