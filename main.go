@@ -43,6 +43,8 @@ func main() {
 	file, err := os.Open(FileName)
 	//var buf string
 	var wg sync.WaitGroup
+	var mutexLink sync.RWMutex
+
 	
 	if err != nil {
 		log.Fatalf("Failed opening file: %s", err)
@@ -63,7 +65,7 @@ func main() {
 		wg.Add(1)
 		// val, _ := <-chTxtlines
 		// fmt.Printf("value of `c` is %v\n", val)
-		go checkResource(resolveResultsMap, chTxtlines, &wg);
+		go checkResource(resolveResultsMap, chTxtlines, &wg, &mutexLink);
 		// valFromCh := string(<-ch)
 		// fmt.Println(valFromCh)
 		// writeToFile("results.txt", valFromCh)
@@ -96,8 +98,11 @@ func main() {
 }
 
 //Проверка ресурса на доступность
-func checkResource(chW map[string]string, chR <-chan string, wg *sync.WaitGroup) {
+func checkResource(chW map[string]string, chR <-chan string, wg *sync.WaitGroup, mutexLink *sync.RWMutex) {
 	defer wg.Done()
+	mutexLink.Lock()
+	defer mutexLink.Unlock()
+
 	/* Таймаут 5 секунд */
 	client := http.Client{
 		Timeout: 5 * time.Second,
