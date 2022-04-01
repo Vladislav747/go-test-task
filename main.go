@@ -11,6 +11,17 @@ import (
 	"sync"
 )
 
+//Интерфейс проверки источника
+type LookUpResolver struct {
+	txtlines          [] string
+	//канал проверки строчек файла
+	chTxtlinesQueue      chan string
+	resolveResultsMap       map[string]string
+	mutexDevice      sync.RWMutex
+	mutexResolved     sync.RWMutex
+}
+
+
 const (
 	FileName = "links.txt"
 )
@@ -19,6 +30,13 @@ func main() {
 	fmt.Println("Programm started")
 	start := time.Now()
 	ch := make(chan string)
+
+	// resolver := newResolver();
+
+	// //Запуск метода LookUpresolver
+	// resolver.Run()
+
+
 
 	file, err := os.Open(FileName)
 	//var buf string
@@ -34,27 +52,30 @@ func main() {
 	scanner.Split(bufio.ScanLines)
 	var txtlines []string
 	//Иницализирую канал
-	chTxtlines := make(chan string, 10)
+	chTxtlines := make(chan string, 5)
 
 	fmt.Printf("type of `c` is %T\n", chTxtlines)
 	fmt.Printf("value of `c` is %v\n", chTxtlines)
+
+	for i := 1; i <= 5; i++ {
+		wg.Add(1)
+		// val, _ := <-chTxtlines
+		// fmt.Printf("value of `c` is %v\n", val)
+		go checkResource(ch, chTxtlines, &wg);
+		// valFromCh := string(<-ch)
+		// fmt.Println(valFromCh)
+		// writeToFile("results.txt", valFromCh)
+	}
  
 	for scanner.Scan() {
 		//txtlines = append(txtlines, scanner.Text())
-		//Кладу в канал - скорее всего он блокируется пока не прочитаю....
 		chTxtlines <- scanner.Text()
+		
+ 
 	}
  
 	file.Close()
  
-	for i := 1; i <= 5; i++ {
-		wg.Add(1)
-		go checkResource(ch, chTxtlines, &wg);
-		valFromCh := string(<-ch)
-		fmt.Println(valFromCh)
-		writeToFile("results.txt", valFromCh)
-	}
-	
 		for _, eachline := range txtlines {
 			ch <- eachline
 		}	
@@ -147,4 +168,12 @@ func writeToFile(nameFile string, data string) {
 	}
 
 	fmt.Printf("Data is written to file %s. \n", nameFile)
+}
+
+
+func newResolver() *LookUpResolver {
+	return &LookUpResolver{
+		chTxtlinesQueue:      make(chan string, 10000),
+		resolveResultsMap:       make(map[string]string),
+	}
 }
