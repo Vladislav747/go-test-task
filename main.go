@@ -9,7 +9,7 @@ import (
 	"time"
 	"context"
 	"sync"
-	"cmd/title"
+	"github.com/go-test-task/title"
 )
 
 
@@ -25,45 +25,45 @@ type ResultMap map[string]string
 func main() {
 	log.Println("Programm started")
 
-	 // Создаем объект мониторинга
-	 watch, err := fsnotify.NewWatcher();
-	 if err != nil {
-		 log.Fatal(err);
-	 }
-	 defer watch.Close();
-	  // Добавляем объект, файл или папку для наблюдения
-	 err = watch.Add("./tmp");
-	 if err != nil {
-		 log.Fatal(err);
-	 }
-	  // Запускаем другую горутину для обработки событий наблюдаемого объекта
-	 go func() {
-		 for {
-			 select {
-			 case ev := <-watch.Events:
-				 {
-					  // Определяем тип события следующим образом 2
-					  // Создайте
-					  // Написать
-					 if ev.Op&fsnotify.Create == fsnotify.Create {
-						  log.Println ("Создать файл:", ev.Name);
-					 }
-					 if ev.Op&fsnotify.Write == fsnotify.Write {
-						  log.Println ("Записать в файл:", ev.Name);
-					 }
+	//  // Создаем объект мониторинга
+	//  watch, err := fsnotify.NewWatcher();
+	//  if err != nil {
+	// 	 log.Fatal(err);
+	//  }
+	//  defer watch.Close();
+	//   // Добавляем объект, файл или папку для наблюдения
+	//  err = watch.Add("./tmp");
+	//  if err != nil {
+	// 	 log.Fatal(err);
+	//  }
+	//   // Запускаем другую горутину для обработки событий наблюдаемого объекта
+	//  go func() {
+	// 	 for {
+	// 		 select {
+	// 		 case ev := <-watch.Events:
+	// 			 {
+	// 				  // Определяем тип события следующим образом 2
+	// 				  // Создайте
+	// 				  // Написать
+	// 				 if ev.Op&fsnotify.Create == fsnotify.Create {
+	// 					  log.Println ("Создать файл:", ev.Name);
+	// 				 }
+	// 				 if ev.Op&fsnotify.Write == fsnotify.Write {
+	// 					  log.Println ("Записать в файл:", ev.Name);
+	// 				 }
 					
-				 }
-			 case err := <-watch.Errors:
-				 {
-					 log.Println("error : ", err);
-					 return;
-				 }
-			 }
-		 }
-	 }();
+	// 			 }
+	// 		 case err := <-watch.Errors:
+	// 			 {
+	// 				 log.Println("error : ", err);
+	// 				 return;
+	// 			 }
+	// 		 }
+	// 	 }
+	//  }();
  
-	  // Цикл
-	 select {};
+	//   // Цикл
+	//  select {};
 
 	// Получение структуры файла с ссылками
 	urlLinksFile, err := os.Open(FileName)
