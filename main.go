@@ -7,7 +7,7 @@ import (
 	"os"
 	"net/http"
 	"time"
-	//"io"
+	"context"
 	"sync"
 )
 
@@ -24,100 +24,97 @@ type LookUpResolver struct {
 
 const (
 	FileName = "links.txt"
+	ResultsFileName = "results.txt"
 )
 
-func main() {
-	fmt.Println("Programm started")
-	start := time.Now()
-	ch := make(chan string)
+var client = http.DefaultClient
 
-	resolveResultsMap := make(map[string]string)
+type ResultMap map[string]string
+
+func main() {
+	log.Println("Programm started")
+
+	// Получение структуры файла с ссылками
+	urlLinksFile, err := os.Open(FileName)
+	if err != nil {
+		log.Fatal("error on read file " + urlLinksFile.Name())
+	}
+
 
 	// resolver := newResolver();
 
 	// //Запуск метода LookUpresolver
 	// resolver.Run()
 
+	resultFile := createNewFile()
 
-
-	file, err := os.Open(FileName)
-	//var buf string
 	var wg sync.WaitGroup
-	var mutexLink sync.RWMutex
 
-	
-	if err != nil {
-		log.Fatalf("Failed opening file: %s", err)
-	}
+	startTime := time.Now()
 
-	createNewFile()
 
-	scanner := bufio.NewScanner(file)
-	scanner.Split(bufio.ScanLines)
-	var txtlines []string
+	// var txtlines []string
 	//Иницализирую канал
 	chTxtlines := make(chan string, 5)
+	resultUrlResp := make(chan string)
 
 	fmt.Printf("type of `c` is %T\n", chTxtlines)
 	fmt.Printf("value of `c` is %v\n", chTxtlines)
+	
+	// Создание буфера, который читает строки файла с ссылками
+	scanner := bufio.NewScanner(urlLinksFile)
+	scanner.Split(bufio.ScanLines)
 
-	for i := 1; i <= 200; i++ {
-		wg.Add(1)
-		// val, _ := <-chTxtlines
-		// fmt.Printf("value of `c` is %v\n", val)
-		go checkResource(resolveResultsMap, chTxtlines, &wg, &mutexLink);
-		// valFromCh := string(<-ch)
-		// fmt.Println(valFromCh)
-		// writeToFile("results.txt", valFromCh)
-	}
- 
+	go writeToFile(resultFile, resultUrlResp)
+
 	for scanner.Scan() {
-		//txtlines = append(txtlines, scanner.Text())
+		wg.Add(1)
+		go checkResource(resultUrlResp, chTxtlines, &wg);
 		chTxtlines <- scanner.Text()
-		
  
 	}
  
-	file.Close()
+	//Закрыть файл
+	urlLinksFile.Close()
  
-		for _, eachline := range txtlines {
-			ch <- eachline
-		}	
-		
 	wg.Wait()
 
-	// for range txtlines {
-		
-	// 	//buf += valFromCh + "\n"
-	// }
-
-	//Получение из канала ch
-//	writeToFile("results.txt", buf)
-
-	fmt.Printf("%.2fs elapsed\n", time.Since(start).Seconds())
+	//Закрыть канал
+	close(resultUrlResp)
+	
+	fmt.Printf("%.2fs elapsed\n", time.Since(startTime).Seconds())
+	return
 }
 
 //Проверка ресурса на доступность
-func checkResource(chW map[string]string, chR <-chan string, wg *sync.WaitGroup, mutexLink *sync.RWMutex) {
+func checkResource(resultCh chan string, chWithUrlLine <-chan string, wg *sync.WaitGroup)error {
 	defer wg.Done()
-	mutexLink.Lock()
-	defer mutexLink.Unlock()
 
-	/* Таймаут 5 секунд */
-	client := http.Client{
-		Timeout: 5 * time.Second,
-	} 
-	url, ok := <-chR
+	context, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	
+	url, ok := <-chWithUrlLine
 	if ok {
-		resp, err := client.Get(url)
+		// https://gist.github.com/2minchul/6d344a0f1f85ead1530803df2e4f9894 - объяснение запроса с контекстом
+		req, err := http.NewRequestWithContext(context, http.MethodGet, url, nil)
 		if err != nil {
-			fmt.Printf("Error host - %s", url)
-			fmt.Println(err)
-			chW[url] = fmt.Sprint(err) // отправка в канал ch
-			return
+			return err
 		}
-		defer resp.Body.Close() // исключение утечки ресурсов
-		//fmt.Printf("Статус хоста %s - %d", url, resp.StatusCode);
+		resp, err := client.Do(req)
+
+		if err != nil {
+			fmt.Printf("[checkResource]Error host - %s : %s\n", url, err.Error())
+			
+			resultCh <- fmt.Sprintf("%s | %s", url, err.Error()) // отправка в канал ch
+
+			return err
+		}
+
+		defer resp.Body.Close() // исключение утечки памяти
+
+		log.Printf("[checkResource] [%d] Url - %s \n", resp.StatusCode, url)
+
+		resultCh <- fmt.Sprintf("%s | %d", url, resp.StatusCode)
 
 		if resp.StatusCode == http.StatusOK {
 			// bodyBytes, err := io.ReadAll(resp.Body)
@@ -127,26 +124,27 @@ func checkResource(chW map[string]string, chR <-chan string, wg *sync.WaitGroup,
 			// bodyString := string(bodyBytes)
 			//fmt.Println(bodyString)
 
-			chW[url] = fmt.Sprintf("Статус хоста %s - %d", url, resp.StatusCode)
+			// chW[url] = fmt.Sprintf("Статус хоста %s - %d", url, resp.StatusCode)
 		}
 	} else {
-		fmt.Println("канал закрыт")
-
+		log.Printf("[checkResource] канал закрыт")
+		
 	}
+	return nil
 }
 
-func createNewFile(){
-	_, err := os.Create("results.txt")
+func createNewFile()*os.File{
+	resultFile, err := os.Create("results.txt")
 
 	if err != nil{
         fmt.Println("Unable to create file:", err) 
-        os.Exit(1)
-		os.Remove("1.txt")
 		res := deleteFile("results.txt")
 		if(res){
 			createNewFile();
 		}
     }
+
+	return resultFile
 }
 
 func deleteFile(nameFile string) bool {
@@ -156,25 +154,22 @@ func deleteFile(nameFile string) bool {
 		log.Fatalf("Failed deleting file: %s", err)
 		return false
 	}
+
+	log.Printf("Deleted file - %s", nameFile)
 	return true
 }
 
-func writeToFile(nameFile string, data string) {
-	file, err := os.Open(nameFile)
-	defer file.Close() 
+func writeToFile(fileForWrite *os.File, resultUrlResp chan string) error {
+	defer fileForWrite.Close() 
 
-	if err != nil{
-        fmt.Println(err) 
-        os.Exit(1) 
-    }
-
-	
-	_, errNew := file.Write([]byte(data + "\n"))
-	if errNew != nil {
-		log.Fatalf("Failed writing to file: %s", errNew)
+	for resultUrl := range resultUrlResp {
+		if _, err := fileForWrite.Write([]byte(resultUrl + "\n")); err != nil {
+			log.Fatalf("[writeToFile]Failed writing to file: %s", err)
+		}
 	}
-
-	fmt.Printf("Data is written to file %s. \n", nameFile)
+	
+	log.Printf("Data is written to file %s. \n", fileForWrite.Name())
+	return nil
 }
 
 
