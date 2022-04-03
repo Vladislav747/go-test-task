@@ -103,9 +103,9 @@ func checkResource(resultCh chan string, chWithUrlLine <-chan string, wg *sync.W
 		resp, err := client.Do(req)
 
 		if err != nil {
-			fmt.Printf("[checkResource]Error host - %s : %s\n", url, err.Error())
+			log.Printf("[checkResource]Error host - %s : %s\n", url, err.Error())
 			
-			resultCh <- fmt.Sprintf("%s | %s", url, err.Error()) // отправка в канал ch
+			resultCh <- fmt.Sprintf("%s | %s", url, "500") // отправка в канал ch
 
 			return err
 		}
@@ -114,9 +114,8 @@ func checkResource(resultCh chan string, chWithUrlLine <-chan string, wg *sync.W
 
 		log.Printf("[checkResource] [%d] Url - %s \n", resp.StatusCode, url)
 
-		resultCh <- fmt.Sprintf("%s | %d", url, resp.StatusCode)
-
 		if resp.StatusCode == http.StatusOK {
+			
 			// bodyBytes, err := io.ReadAll(resp.Body)
 			// if err != nil {
 			// 	log.Fatal(err)
@@ -125,7 +124,15 @@ func checkResource(resultCh chan string, chWithUrlLine <-chan string, wg *sync.W
 			//fmt.Println(bodyString)
 
 			// chW[url] = fmt.Sprintf("Статус хоста %s - %d", url, resp.StatusCode)
+			resultCh <- fmt.Sprintf("%s | %d", url, resp.StatusCode)
+		} else{
+			resultCh <- fmt.Sprintf("%s | %d", url, resp.StatusCode)
 		}
+
+		
+		
+
+	
 	} else {
 		log.Printf("[checkResource] канал закрыт")
 		
