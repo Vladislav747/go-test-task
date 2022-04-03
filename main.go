@@ -9,17 +9,8 @@ import (
 	"time"
 	"context"
 	"sync"
+	"cmd/title"
 )
-
-//Интерфейс проверки источника
-type LookUpResolver struct {
-	txtlines          [] string
-	//канал проверки строчек файла
-	chTxtlinesQueue      chan string
-	resolveResultsMap       map[string]string
-	mutexDevice      sync.RWMutex
-	mutexResolved     sync.RWMutex
-}
 
 
 const (
@@ -40,20 +31,12 @@ func main() {
 		log.Fatal("error on read file " + urlLinksFile.Name())
 	}
 
-
-	// resolver := newResolver();
-
-	// //Запуск метода LookUpresolver
-	// resolver.Run()
-
 	resultFile := createNewFile()
 
 	var wg sync.WaitGroup
 
 	startTime := time.Now()
 
-
-	// var txtlines []string
 	//Иницализирую канал
 	chTxtlines := make(chan string, 5)
 	resultUrlResp := make(chan string)
@@ -71,7 +54,7 @@ func main() {
 		wg.Add(1)
 		go checkResource(resultUrlResp, chTxtlines, &wg);
 		chTxtlines <- scanner.Text()
- 
+
 	}
  
 	//Закрыть файл
@@ -86,7 +69,7 @@ func main() {
 	return
 }
 
-//Проверка ресурса на доступность
+/* Проверка ресурса на доступность */
 func checkResource(resultCh chan string, chWithUrlLine <-chan string, wg *sync.WaitGroup)error {
 	defer wg.Done()
 
@@ -116,23 +99,17 @@ func checkResource(resultCh chan string, chWithUrlLine <-chan string, wg *sync.W
 
 		if resp.StatusCode == http.StatusOK {
 			
-			// bodyBytes, err := io.ReadAll(resp.Body)
-			// if err != nil {
-			// 	log.Fatal(err)
-			// }
-			// bodyString := string(bodyBytes)
-			//fmt.Println(bodyString)
-
-			// chW[url] = fmt.Sprintf("Статус хоста %s - %d", url, resp.StatusCode)
-			resultCh <- fmt.Sprintf("%s | %d", url, resp.StatusCode)
+			//
+			if title, ok := title.GetHtmlTitle(resp.Body); ok {
+				resultCh <- fmt.Sprintf("%s | %d | %s", url, resp.StatusCode, title)
+			} else{
+				resultCh <- fmt.Sprintf("%s | %s | %s", url, resp.StatusCode, "Can't get title")
+			}
+			
 		} else{
 			resultCh <- fmt.Sprintf("%s | %d", url, resp.StatusCode)
 		}
 
-		
-		
-
-	
 	} else {
 		log.Printf("[checkResource] канал закрыт")
 		
@@ -177,12 +154,4 @@ func writeToFile(fileForWrite *os.File, resultUrlResp chan string) error {
 	
 	log.Printf("Data is written to file %s. \n", fileForWrite.Name())
 	return nil
-}
-
-
-func newResolver() *LookUpResolver {
-	return &LookUpResolver{
-		chTxtlinesQueue:      make(chan string, 10000),
-		resolveResultsMap:       make(map[string]string),
-	}
 }
