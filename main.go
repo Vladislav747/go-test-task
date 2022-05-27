@@ -22,6 +22,28 @@ var client = http.DefaultClient
 func main() {
 	log.Println("Program started")
 
+	startTime := checkFile()
+
+	/**
+	Все то касается изменение файла
+	*/
+	doneChan := make(chan bool)
+	ctx := context.Background()
+
+	newCtx := waitForFile(ctx, doneChan)
+	//Ждем изменений в файле
+	<-doneChan
+
+	fmt.Printf("%.2fs elapsed\n", time.Since(startTime).Seconds())
+	if newCtx.Value("newData") != nil {
+		fmt.Println("check")
+		startTime := checkFile()
+		fmt.Printf("%.2fs elapsed\n", time.Since(startTime).Seconds())
+
+	}
+}
+
+func checkFile() time.Time {
 	// Получение структуры файла с ссылками
 	urlLinksFile, err := os.Open(FileName)
 	if err != nil {
@@ -58,31 +80,25 @@ func main() {
 
 	//Закрыть канал
 	close(resultUrlResp)
+	return startTime
+}
 
-	/**
-	Все то касается изменение файла
-	*/
-	doneChan := make(chan bool)
+func waitForFile(ctx context.Context, doneChan chan bool) context.Context {
+	//defer func() {
+	//
+	//}()
 
-	go func(doneChan chan bool) {
-		defer func() {
-			doneChan <- true
-		}()
+	fmt.Println("Wait for changes links.txt")
 
-		fmt.Println("Wait for changes links.txt")
+	err := watchFile("links.txt")
+	if err != nil {
+		fmt.Println(err)
+	}
 
-		err := watchFile("links.txt")
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		fmt.Println("File has been changed")
-	}(doneChan)
-
-	<-doneChan
-
-	fmt.Printf("%.2fs elapsed\n", time.Since(startTime).Seconds())
-	return
+	fmt.Println("File has been changed")
+	ctx = context.WithValue(ctx, "newData", true)
+	doneChan <- true
+	return ctx
 }
 
 /* Проверка ресурса на доступность */
