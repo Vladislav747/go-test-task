@@ -21,21 +21,21 @@ var client = http.DefaultClient
 
 func main() {
 	log.Println("Program started")
-
-	startTime := checkFile()
+	//Положить горутину в отд ф-цию чтобы сборщику мусора было легче
+	func() {
+		startTime := checkFile()
+		fmt.Printf("%.2fs elapsed\n", time.Since(startTime).Seconds())
+	}()
 
 	/**
 	Все то касается изменение файла
 	*/
 	doneChan := make(chan bool)
-	ctx := context.Background()
 
-	newCtx := waitForFile(ctx, doneChan)
-	//Ждем изменений в файле
-	<-doneChan
+	go waitForFile(doneChan)
 
-	fmt.Printf("%.2fs elapsed\n", time.Since(startTime).Seconds())
-	if newCtx.Value("newData") != nil {
+	//Ждем изменений в файле и перезапускаем проверку файла
+	if <-doneChan {
 		fmt.Println("check")
 		startTime := checkFile()
 		fmt.Printf("%.2fs elapsed\n", time.Since(startTime).Seconds())
@@ -83,10 +83,7 @@ func checkFile() time.Time {
 	return startTime
 }
 
-func waitForFile(ctx context.Context, doneChan chan bool) context.Context {
-	//defer func() {
-	//
-	//}()
+func waitForFile(doneChan chan bool) {
 
 	fmt.Println("Wait for changes links.txt")
 
@@ -96,9 +93,7 @@ func waitForFile(ctx context.Context, doneChan chan bool) context.Context {
 	}
 
 	fmt.Println("File has been changed")
-	ctx = context.WithValue(ctx, "newData", true)
 	doneChan <- true
-	return ctx
 }
 
 /* Проверка ресурса на доступность */
