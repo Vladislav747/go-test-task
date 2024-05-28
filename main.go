@@ -27,16 +27,14 @@ func main() {
 		fmt.Printf("%.2fs elapsed\n", time.Since(startTime).Seconds())
 	}()
 
-	/**
-	Все то касается изменение файла
-	*/
+	// Все то касается изменение файла
 	doneChan := make(chan bool)
 
 	go waitForFile(doneChan)
 
 	//Ждем изменений в файле и перезапускаем проверку файла
 	if <-doneChan {
-		fmt.Println("check")
+		fmt.Println("check file")
 		startTime := checkFile()
 		fmt.Printf("%.2fs elapsed\n", time.Since(startTime).Seconds())
 
@@ -100,6 +98,7 @@ func waitForFile(doneChan chan bool) {
 func checkResource(resultCh chan string, chWithUrlLine <-chan string, wg *sync.WaitGroup) error {
 	defer wg.Done()
 
+	//Функции дается 5 секунд на проверку иначе срабатывает cancel context
 	context, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
@@ -126,7 +125,7 @@ func checkResource(resultCh chan string, chWithUrlLine <-chan string, wg *sync.W
 
 		if resp.StatusCode == http.StatusOK {
 
-			//
+			//Если ответ корректный то проходимся по структуре сайта
 			if title, ok := title.GetHtmlTitle(resp.Body); ok {
 				resultCh <- fmt.Sprintf("%s | %d | %s", url, resp.StatusCode, title)
 			} else {
@@ -170,6 +169,7 @@ func deleteFile(nameFile string) bool {
 	return true
 }
 
+// Запись в файл
 func writeToFile(fileForWrite *os.File, resultUrlResp chan string) error {
 	defer fileForWrite.Close()
 
@@ -183,21 +183,24 @@ func writeToFile(fileForWrite *os.File, resultUrlResp chan string) error {
 	return nil
 }
 
-/**
+/*
+*
 Проверка файла пока в файле не появятся изменения
 */
 func watchFile(filePath string) error {
+	//Изначальное время модификации файла
 	initialStat, err := os.Stat(filePath)
 	if err != nil {
 		return err
 	}
 
+	//Бесконечная проверка с частотой раз в 1 сек - time.Sleep(1*time.Second)
 	for {
 		stat, err := os.Stat(filePath)
 		if err != nil {
 			return err
 		}
-
+		//Текущее время модификации файла
 		if stat.Size() != initialStat.Size() || stat.ModTime() != initialStat.ModTime() {
 			break
 		}
