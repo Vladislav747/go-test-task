@@ -68,7 +68,6 @@ func checkFile() time.Time {
 		wg.Add(1)
 		go checkResource(resultUrlResp, chTxtlines, &wg)
 		chTxtlines <- scanner.Text()
-
 	}
 
 	//Закрыть файл
@@ -138,7 +137,6 @@ func checkResource(resultCh chan string, chWithUrlLine <-chan string, wg *sync.W
 
 	} else {
 		log.Printf("[checkResource] канал закрыт")
-
 	}
 	return nil
 }
@@ -148,8 +146,9 @@ func createNewFile() *os.File {
 
 	if err != nil {
 		fmt.Println("Unable to create file:", err)
-		res := deleteFile(ResultsFileName)
-		if res {
+		ok := deleteFile(ResultsFileName)
+		//Проверяю что прошло успешное удаление файла
+		if ok {
 			createNewFile()
 		}
 	}
