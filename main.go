@@ -144,11 +144,11 @@ func checkResource(resultCh chan string, chWithUrlLine <-chan string, wg *sync.W
 }
 
 func createNewFile() *os.File {
-	resultFile, err := os.Create("results.txt")
+	resultFile, err := os.Create(ResultsFileName)
 
 	if err != nil {
 		fmt.Println("Unable to create file:", err)
-		res := deleteFile("results.txt")
+		res := deleteFile(ResultsFileName)
 		if res {
 			createNewFile()
 		}

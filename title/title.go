@@ -7,16 +7,24 @@ import (
 )
 
 /*
-	Проверка что элемент title
+Проверка что элемент title
 */
 func isTitleElement(n *html.Node) bool {
 	return n.Type == html.ElementNode && n.Data == "title"
 }
 
 /*
-	Ф-ция проход по html
+Ф-ция проход по html
 */
 func traverse(n *html.Node) (string, bool) {
+	if n == nil {
+		return "", false
+	}
+
+	if n.FirstChild == nil {
+		return "", false
+	}
+
 	if isTitleElement(n) {
 		return n.FirstChild.Data, true
 	}
@@ -32,7 +40,7 @@ func traverse(n *html.Node) (string, bool) {
 }
 
 /*
-	Главная ф-ция получения title из html
+Главная ф-ция получения title из html
 */
 func GetHtmlTitle(r io.Reader) (string, bool) {
 	doc, err := html.Parse(r)
